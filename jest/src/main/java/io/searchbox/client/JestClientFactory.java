@@ -13,6 +13,7 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
+import org.apache.http.config.SocketConfig;
 import org.apache.http.conn.HttpClientConnectionManager;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.conn.routing.HttpRoutePlanner;
@@ -179,6 +180,7 @@ public class JestClientFactory {
         IOReactorConfig ioReactorConfig = IOReactorConfig.custom()
                 .setConnectTimeout(httpClientConfig.getConnTimeout())
                 .setSoTimeout(httpClientConfig.getReadTimeout())
+                .setSoKeepAlive(httpClientConfig.getSoKeepAlive())
                 .build();
 
         Registry<SchemeIOSessionStrategy> sessionStrategyRegistry = RegistryBuilder.<SchemeIOSessionStrategy>create()
@@ -224,6 +226,16 @@ public class JestClientFactory {
             log.info("Using multi thread/connection supporting pooling connection manager");
             final PoolingHttpClientConnectionManager poolingConnMgr = new PoolingHttpClientConnectionManager(registry);
 
+            if (httpClientConfig.getSoKeepAlive()) {
+                SocketConfig current = poolingConnMgr.getDefaultSocketConfig() == null ?
+                                       SocketConfig.DEFAULT :
+                                       poolingConnMgr.getDefaultSocketConfig();
+                SocketConfig socketConfig = SocketConfig.copy(current)
+                        .setSoKeepAlive(true)
+                        .build();
+                poolingConnMgr.setDefaultSocketConfig(socketConfig);
+            }
+
             final Integer maxTotal = httpClientConfig.getMaxTotalConnection();
             if (maxTotal != null) {
                 poolingConnMgr.setMaxTotal(maxTotal);
@@ -239,7 +251,14 @@ public class JestClientFactory {
             retval = poolingConnMgr;
         } else {
             log.info("Using single thread/connection supporting basic connection manager");
-            retval = new BasicHttpClientConnectionManager(registry);
+            BasicHttpClientConnectionManager basicConnMgr = new BasicHttpClientConnectionManager(registry);
+            if (httpClientConfig.getSoKeepAlive()) {
+                SocketConfig socketConfig = SocketConfig.copy(basicConnMgr.getSocketConfig())
+                                                        .setSoKeepAlive(true)
+                                                        .build();
+                basicConnMgr.setSocketConfig(socketConfig);
+            }
+            retval = basicConnMgr;
         }
 
         return retval;

@@ -140,6 +140,33 @@ public class JestClientFactoryTest {
         assertEquals(credentialsProvider, httpClientContext.getCredentialsProvider());
     }
 
+    @Test
+    public void clientBasicCreationWithSoKeepAlive() {
+        HttpClientConfig httpClientConfig = new HttpClientConfig.Builder("http://localhost:9200")
+                .soKeepAlive(true).build();
+
+        KeepAliveChecker factory = new KeepAliveChecker();
+        factory.setHttpClientConfig(httpClientConfig);
+
+        BasicHttpClientConnectionManager basicHttpClientConnectionManager= (BasicHttpClientConnectionManager)factory.getConnectionManager();
+        assertTrue(basicHttpClientConnectionManager.getSocketConfig().isSoKeepAlive());
+
+    }
+
+    @Test
+    public void clientMultiCreationWithSoKeepAlive() {
+        HttpClientConfig httpClientConfig = new HttpClientConfig.Builder("http://localhost:9200")
+                .multiThreaded(true)
+                .soKeepAlive(true).build();
+
+        KeepAliveChecker factory = new KeepAliveChecker();
+        factory.setHttpClientConfig(httpClientConfig);
+
+        PoolingHttpClientConnectionManager poolingHttpClientConnectionManager= (PoolingHttpClientConnectionManager) factory.getConnectionManager();
+        assertTrue(poolingHttpClientConnectionManager.getDefaultSocketConfig().isSoKeepAlive());
+
+    }
+
     class ExtendedJestClientFactory extends JestClientFactory {
         @Override
         protected NodeChecker createNodeChecker(JestHttpClient client, HttpClientConfig httpClientConfig) {
@@ -150,6 +177,18 @@ public class JestClientFactoryTest {
     class OtherNodeChecker extends NodeChecker {
         public OtherNodeChecker(JestClient jestClient, ClientConfig clientConfig) {
             super(jestClient, clientConfig);
+        }
+    }
+
+    class KeepAliveChecker extends JestClientFactory {
+        @Override
+        protected NHttpClientConnectionManager getAsyncConnectionManager() {
+            return super.getAsyncConnectionManager();
+        }
+
+        @Override
+        protected HttpClientConnectionManager getConnectionManager() {
+            return super.getConnectionManager();
         }
     }
 }

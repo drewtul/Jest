@@ -19,6 +19,7 @@ import org.apache.http.nio.conn.SchemeIOSessionStrategy;
 import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
 
 import java.net.ProxySelector;
+import java.net.SocketOptions;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,6 +45,7 @@ public class HttpClientConfig extends ClientConfig {
     private final SchemeIOSessionStrategy httpsIOSessionStrategy;
     private Set<HttpHost> preemptiveAuthTargetHosts;
     private final ElasticsearchVersion elasticsearchVersion;
+    private final Boolean soKeepAlive;
 
     public HttpClientConfig(Builder builder) {
         super(builder);
@@ -59,6 +61,7 @@ public class HttpClientConfig extends ClientConfig {
         this.httpsIOSessionStrategy = builder.httpsIOSessionStrategy;
         this.preemptiveAuthTargetHosts = builder.preemptiveAuthTargetHosts;
         this.elasticsearchVersion = builder.elasticsearchVersion;
+        this.soKeepAlive = builder.soKeepAlive;
     }
 
     public Map<HttpRoute, Integer> getMaxTotalConnectionPerRoute() {
@@ -109,6 +112,10 @@ public class HttpClientConfig extends ClientConfig {
         return elasticsearchVersion;
     }
 
+    public Boolean getSoKeepAlive() {
+        return soKeepAlive;
+    }
+
     public static class Builder extends ClientConfig.AbstractBuilder<HttpClientConfig, Builder> {
 
         private Integer maxTotalConnection;
@@ -123,12 +130,14 @@ public class HttpClientConfig extends ClientConfig {
         private SchemeIOSessionStrategy httpsIOSessionStrategy;
         private Set<HttpHost> preemptiveAuthTargetHosts = Collections.emptySet();
         private ElasticsearchVersion elasticsearchVersion = ElasticsearchVersion.UNKNOWN;
+        private Boolean soKeepAlive = false;
 
         public Builder(HttpClientConfig httpClientConfig) {
             super(httpClientConfig);
             this.maxTotalConnection = httpClientConfig.maxTotalConnection;
             this.defaultMaxTotalConnectionPerRoute = httpClientConfig.defaultMaxTotalConnectionPerRoute;
             this.maxTotalConnectionPerRoute = httpClientConfig.maxTotalConnectionPerRoute;
+            this.soKeepAlive = httpClientConfig.soKeepAlive;
         }
 
         public Builder(Collection<String> serverUris) {
@@ -273,6 +282,20 @@ public class HttpClientConfig extends ClientConfig {
             if (preemptiveAuthTargetHosts != null) {
                 this.preemptiveAuthTargetHosts = new HashSet<HttpHost>(preemptiveAuthTargetHosts);
             }
+            return this;
+        }
+
+        /**
+         * Sets whether {@link SocketOptions#SO_KEEPALIVE} is enabled on the underlying sockets
+         *
+         * <p>
+         *     This is disabled by default
+         * </p>
+         *
+         * @param soKeepAlive <code>true</code> to enable <code>false</code> to disable
+         */
+        public Builder soKeepAlive(Boolean soKeepAlive) {
+            this.soKeepAlive = soKeepAlive;
             return this;
         }
 
